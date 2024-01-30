@@ -317,10 +317,33 @@ class _MusicPlayerState extends State<MusicPlayer> {
                                           await widget.spotify!.player.pause();
                                       _timer?.cancel();
                                     } else {
-                                      newState = await widget.spotify!.player
-                                          .startOrResume();
-                                      _timer?.cancel();
-                                      _startTimer();
+                                      // Manually call the Spotify API endpoint to start or resume playback
+                                      SharedPreferences prefs =
+                                          await SharedPreferences
+                                              .getInstance();
+                                      String? accessToken = prefs.getString('accessToken');
+                                      var response = await http.put(
+                                        Uri.parse(
+                                            'https://api.spotify.com/v1/me/player/play'),
+                                        headers: {
+                                          'Authorization':
+                                              'Bearer $accessToken',
+                                        },
+                                      );
+
+                                      if (response.statusCode == 204) {
+                                        // The playback started successfully
+                                        _timer?.cancel();
+                                        _startTimer();
+                                        newState = await widget
+                                            .spotify!.player
+                                            .playbackState();
+                                        setMusicState(newState);
+                                      } else {
+                                        // Handle the error
+                                        print(
+                                            'Failed to start playback: ${response.statusCode}');
+                                      }
                                     }
                                     setMusicState(newState!);
 
