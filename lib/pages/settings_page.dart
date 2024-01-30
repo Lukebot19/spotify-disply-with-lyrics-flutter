@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spotify_display/utils/resize_window.dart';
@@ -16,20 +18,24 @@ class _SettingsPageState extends State<SettingsPage> {
   List<window_size.Screen>? _screenList;
   window_size.Screen? _screen;
   List<String>? _screenListStrings;
+  bool _loading = true;
 
   @override
   void dispose() async {
     super.dispose();
-    await resizeWindow(350, 190);
   }
 
   @override
   void initState() {
-    windowManager.ensureInitialized();
-    windowManager.setSize(const Size(350, 450), animate: true);
+    _loading = true;
     super.initState();
+    _setSize();
     _loadPreferences();
     _getScreen();
+  }
+
+  void _setSize() async {
+    await resizeWindow(350, 450);
   }
 
   void _loadPreferences() async {
@@ -77,10 +83,11 @@ class _SettingsPageState extends State<SettingsPage> {
         newFrame.left,
         newFrame.top,
         350,
-        190,
+        450,
       );
 
       window_size.setWindowFrame(updatedFrame);
+      await resizeWindow(350, 450);
     }
   }
 
@@ -98,81 +105,123 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _getScreen() async {
     _screen = await window_size.getCurrentScreen();
+    _loading = false;
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 18, 18, 18),
+      backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 0, 0, 0),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () async {
+            Navigator.pop(context);
+            await resizeWindow(350, 190);
+          },
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
+        backgroundColor: const Color(0xFF121212),
         title: const Text(
           'Settings',
           style: TextStyle(color: Colors.white),
         ),
       ),
-      body: ListView(
-        children: <Widget>[
-          SwitchListTile(
-            title: const Text(
-              'Always on Top',
-              style: TextStyle(color: Colors.white),
-            ),
-            value: _alwaysOnTop,
-            onChanged: (bool value) {
-              setState(() {
-                _toggleAlwaysOnTop();
-              });
-            },
-          ),
-          DropdownButton<String>(
-            dropdownColor: Color.fromARGB(255, 34, 92, 0),
-            value: _windowLocation,
-            items: ['top left', 'top right', 'bottom left', 'bottom right']
-                .map((String value) {
-              return DropdownMenuItem<String>(
-                value: value,
-                child: Text(
-                  'Window Location: $value',
-                  style: const TextStyle(color: Colors.white),
-                ),
-              );
-            }).toList(),
-            onChanged: (String? value) {
-              setState(() {
-                _setWindowLocation(value!);
-              });
-            },
-          ),
-          DropdownButton<String>(
-            value: _screenIndex != null
-                ? 'Screen ${_screenList!.indexOf(_screenIndex!) + 1}'
-                : null,
-            items: _screenListStrings?.map((String value) {
-              return DropdownMenuItem<String>(
-                value: value,
-                child: Text(
-                  value,
-                  style: const TextStyle(color: Colors.white),
-                ),
-              );
-            }).toList(),
-            onChanged: (String? value) {
-              setState(() {
-                _setScreenIndex(
-                    value != null ? int.parse(value.split(' ')[1]) - 1 : null);
-              });
-            },
-          ),
-          TextButton(
-            onPressed: _clearPreferences,
-            child: const Text(
-              'Clear Preferences',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
+      body: _loading == false
+          ? Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  SwitchListTile(
+                    title: const Text(
+                      'Always on Top',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    value: _alwaysOnTop,
+                    onChanged: (bool value) {
+                      setState(() {
+                        _toggleAlwaysOnTop();
+                      });
+                    },
+                    activeColor: Colors.green,
+                  ),
+                  const SizedBox(height: 20),
+                  DropdownButton<String>(
+                    dropdownColor: const Color(0xFF121212),
+                    value: _windowLocation,
+                    style: const TextStyle(color: Colors.white),
+                    items: [
+                      'top left',
+                      'top right',
+                      'bottom left',
+                      'bottom right'
+                    ].map((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(
+                          'Window Location: $value',
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (String? value) {
+                      setState(() {
+                        _setWindowLocation(value!);
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  DropdownButton<String>(
+                    dropdownColor: const Color(0xFF121212),
+                    value: _screenIndex != null
+                        ? 'Screen ${_screenList!.indexOf(_screenIndex!) + 1}'
+                        : null,
+                    style: const TextStyle(color: Colors.white),
+                    items: _screenListStrings?.map((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(
+                          value,
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (String? value) {
+                      setState(() {
+                        _setScreenIndex(value != null
+                            ? int.parse(value.split(' ')[1]) - 1
+                            : null);
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  TextButton(
+                    onPressed: _clearPreferences,
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.green,
+                    ),
+                    child: const Text(
+                      'Clear Preferences',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  TextButton(
+                    onPressed: () {
+                      exit(0);
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.green,
+                    ),
+                    child: const Text(
+                      'Close App',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : const Center(child: CircularProgressIndicator()),
     );
   }
 }

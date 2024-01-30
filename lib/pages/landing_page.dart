@@ -17,7 +17,7 @@ class LandingPage extends StatefulWidget {
 
 class _LandingPageState extends State<LandingPage> {
   bool _isConnected = false;
-  SpotifyApi? spotify;
+  dynamic spotify;
 
   @override
   void initState() {
@@ -35,6 +35,10 @@ class _LandingPageState extends State<LandingPage> {
       if (spotify == null) {
         String accessToken = prefs.getString('accessToken') ?? '';
         spotify = SpotifyApi.withAccessToken(accessToken);
+        
+        await prefs.setBool('isConnected', true);
+        await prefs.setString('accessToken', spotify?.client.credentials.accessToken);
+        await prefs.setString('refreshToken', spotify?.client.credentials.refreshToken ?? '');
       }
       Navigator.pushReplacement(
         context,

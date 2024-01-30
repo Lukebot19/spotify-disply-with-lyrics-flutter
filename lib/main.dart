@@ -20,12 +20,13 @@ void main() async {
     alwaysOnTop: onTop,
   );
   windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await positionWindow(alignment);
     await getScreenList(screen);
     await windowManager.setResizable(false);
     await windowManager.show();
     await windowManager.focus();
     await resizeWindow(350, 190);
-    // await positionWindow(alignment);
+    await positionWindow(alignment);
   });
   runApp(const MyApp());
 }
