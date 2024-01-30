@@ -1,18 +1,21 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:audio_video_progress_bar/audio_video_progress_bar.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:palette_generator/palette_generator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spotify/spotify.dart';
 import 'package:spotify_display/constants/colors.dart';
+import 'package:spotify_display/constants/strings.dart';
 import 'package:spotify_display/models/music.dart';
 import 'package:spotify_display/pages/landing_page.dart';
 import 'package:spotify_display/pages/lyrics_page.dart';
 import 'package:spotify_display/pages/settings_page.dart';
 import 'package:spotify_display/utils/preferences.dart';
 import 'package:spotify_display/widgets/art_work_image.dart';
-import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+import 'package:http/http.dart' as http;
 
 class MusicPlayer extends StatefulWidget {
   SpotifyApi? spotify;
@@ -51,27 +54,51 @@ class _MusicPlayerState extends State<MusicPlayer> {
         _currentTrack = await widget.spotify?.player.playbackState();
       } catch (e) {
         if (e is AuthorizationException) {
-          clearSharedPreferences();
-          Navigator.pushReplacement(context,
-              MaterialPageRoute(builder: (context) {
-            return LandingPage();
-          }));
+          try {
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+
+            final refreshToken = prefs.getString('refreshToken');
+
+            // Try to refresh the access token
+            final response = await http.post(
+              Uri.parse('https://accounts.spotify.com/api/token'),
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization':
+                    'Basic ${base64Encode(utf8.encode('${CustomStrings.clientId}:${CustomStrings.clientSecret}'))}',
+              },
+              body: {
+                'grant_type': 'refresh_token',
+                'refresh_token': refreshToken,
+              },
+            );
+
+            if (response.statusCode == 200) {
+              final data = jsonDecode(response.body);
+              widget.spotify?.credentials.accessToken = data['access_token'];
+            } else {
+              throw Exception('Failed to refresh access token');
+            }
+          } catch (_) {
+            clearSharedPreferences();
+            Navigator.pushReplacement(context,
+                MaterialPageRoute(builder: (context) {
+              return LandingPage();
+            }));
+          }
         }
         _currentTrack = null;
       }
-      if (_currentTrack == null) {
-        clearSharedPreferences();
-          Navigator.pushReplacement(context,
-              MaterialPageRoute(builder: (context) {
-            return LandingPage();
-          }));
-        }
-      
-      setMusicState(_currentTrack!);
+      if (_currentTrack != null) {
+        setMusicState(_currentTrack);
+      }
     });
   }
 
   void _startTimer() {
+    if (music.currentPosition == null) {
+      return;
+    }
     _timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
       _streamController?.add(Duration(milliseconds: music.currentPosition!));
     });
@@ -113,7 +140,9 @@ class _MusicPlayerState extends State<MusicPlayer> {
     } else {
       _currentTrack = false;
     }
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   setMusicState(PlaybackState currentTrack) async {
