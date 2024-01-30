@@ -75,7 +75,9 @@ class _MusicPlayerState extends State<MusicPlayer> {
 
             if (response.statusCode == 200) {
               final data = jsonDecode(response.body);
-              widget.spotify?.credentials.accessToken = data['access_token'];
+              prefs.setString('accessToken', data['access_token']);
+              prefs.setString('refreshToken', data['refresh_token']);
+              widget.spotify = SpotifyApi.withAccessToken(data['access_token']);
             } else {
               throw Exception('Failed to refresh access token');
             }
@@ -158,23 +160,26 @@ class _MusicPlayerState extends State<MusicPlayer> {
     music.currentPosition = currentTrack.progress_ms;
     music.isLiked = await widget.spotify!.tracks.me.containsOne(music.trackId!);
 
-    widget.spotify?.tracks.get(music.trackId!).then((track) async {
-      String? tempSongName = track.name;
-      if (tempSongName != null) {
-        music.songName = tempSongName;
-        music.artistName = track.artists?.first.name ?? "";
-        String? image = track.album?.images?.first.url;
-        if (image != null) {
-          music.songImage = image;
-          final tempSongColor = await getImagePalette(NetworkImage(image));
-          if (tempSongColor != null) {
-            music.songColor = tempSongColor;
-          }
+    Track? track = currentTrack.item;
+    if (track == null) {
+      return;
+    }
+    String? tempSongName = track.name;
+    if (tempSongName != null) {
+      music.songName = tempSongName;
+      music.artistName = track.artists?.first.name ?? "";
+      String? image = track.album?.images?.first.url;
+      if (image != null) {
+        music.songImage = image;
+        final tempSongColor = await getImagePalette(NetworkImage(image));
+        if (tempSongColor != null) {
+          music.songColor = tempSongColor;
         }
-        music.artistImage = track.artists?.first.images?.first.url;
-        setState(() {});
       }
-    });
+      music.artistImage = track.artists?.first.images?.first.url;
+      setState(() {});
+    }
+    
 
     setState(() {});
   }
