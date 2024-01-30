@@ -32,6 +32,8 @@ class _LyricsPageState extends State<LyricsPage> {
   StreamController<Duration>? _streamController;
   Timer? _timer;
   Duration _elapsedTime = Duration.zero;
+  bool firstTime = true;
+  
   @override
   void dispose() {
     _timer?.cancel();
@@ -69,6 +71,11 @@ class _LyricsPageState extends State<LyricsPage> {
         for (int index = 0; index < lyrics!.length; index++) {
           if (lyrics![index].timeStamp.isAfter(dt)) {
             int scrollToIndex = index > 0 ? index - 1 : index;
+            // If loading the page for the first time, scroll to the current position
+            if (firstTime == true){
+              itemScrollController.jumpTo(index: scrollToIndex);
+              firstTime = false;
+            }
             itemScrollController.scrollTo(
                 index: scrollToIndex,
                 duration: const Duration(milliseconds: 600));
