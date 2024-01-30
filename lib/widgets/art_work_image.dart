@@ -1,0 +1,24 @@
+import 'package:flutter/material.dart';
+
+class ArtWorkImage extends StatelessWidget {
+  final String? image;
+
+  const ArtWorkImage({super.key, required this.image});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 50,
+      height: MediaQuery.of(context).size.height * 0.3,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(4),
+        image: image != null
+            ? DecorationImage(
+                image: NetworkImage(image!),
+                fit: BoxFit.cover,
+              )
+            : null,
+      ),
+    );
+  }
+}
