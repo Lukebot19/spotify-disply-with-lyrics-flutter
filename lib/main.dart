@@ -5,8 +5,23 @@ import 'package:spotify_display/utils/resize_window.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:window_size/window_size.dart' as window_size;
 
+import 'dart:io';
+
+import 'package:launch_at_startup/launch_at_startup.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  PackageInfo packageInfo = await PackageInfo.fromPlatform();
+
+  launchAtStartup.setup(
+    appName: packageInfo.appName,
+    appPath: Platform.resolvedExecutable,
+  );
+
+  await launchAtStartup.enable();
+
   await windowManager.ensureInitialized();
 
   SharedPreferences prefs = await SharedPreferences.getInstance();

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spotify_display/utils/resize_window.dart';
 import 'package:window_manager/window_manager.dart';
@@ -19,6 +20,7 @@ class _SettingsPageState extends State<SettingsPage> {
   window_size.Screen? _screen;
   List<String>? _screenListStrings;
   bool _loading = true;
+  bool _startUp = false;
 
   @override
   void dispose() async {
@@ -31,6 +33,7 @@ class _SettingsPageState extends State<SettingsPage> {
     super.initState();
     _setSize();
     _loadPreferences();
+    _getStartUp();
     _getScreen();
   }
 
@@ -45,16 +48,20 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() {
       _alwaysOnTop = prefs.getBool('alwaysOnTop') ?? false;
       int tempIndex = prefs.getInt('screenIndex') ?? 1;
-      _screenIndex = _screenList![tempIndex - 1];
+      try {
+        _screenIndex = _screenList![tempIndex - 1];
+      } catch (_) {
+        _screenIndex = _screenList![0];
+      }
       _windowLocation = prefs.getString('windowLocation') ?? 'top left';
     });
   }
 
   void _savePreferences() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setBool('alwaysOnTop', _alwaysOnTop);
-    prefs.setInt('screenIndex', _screenList!.indexOf(_screenIndex!) + 1);
-    prefs.setString('windowLocation', _windowLocation);
+    await prefs.setBool('alwaysOnTop', _alwaysOnTop);
+    await prefs.setInt('screenIndex', _screenList!.indexOf(_screenIndex!) + 1);
+    await prefs.setString('windowLocation', _windowLocation);
   }
 
   void _clearPreferences() async {
@@ -87,7 +94,7 @@ class _SettingsPageState extends State<SettingsPage> {
       );
 
       window_size.setWindowFrame(updatedFrame);
-      await resizeWindow(350, 450);
+      // await resizeWindow(350, 450);
     }
   }
 
@@ -107,6 +114,24 @@ class _SettingsPageState extends State<SettingsPage> {
     _screen = await window_size.getCurrentScreen();
     _loading = false;
     setState(() {});
+  }
+
+  Future<void> _setStartUp(startUp) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('startUp', startUp);
+    if (startUp) {
+      await launchAtStartup.enable();
+    } else {
+      await launchAtStartup.disable();
+    }
+  }
+
+  Future<void> _getStartUp() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool startUp = prefs.getBool('startUp') ?? false;
+    setState(() {
+      _startUp = startUp;
+    });
   }
 
   @override
@@ -143,6 +168,21 @@ class _SettingsPageState extends State<SettingsPage> {
                     onChanged: (bool value) {
                       setState(() {
                         _toggleAlwaysOnTop();
+                      });
+                    },
+                    activeColor: Colors.green,
+                  ),
+                  SwitchListTile(
+                    title: const Text(
+                      'Launch at Startup',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    value: _startUp,
+                    onChanged: (bool value) async {
+                      await _setStartUp(value);
+
+                      setState(() {
+                        _startUp = value;
                       });
                     },
                     activeColor: Colors.green,

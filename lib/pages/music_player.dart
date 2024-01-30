@@ -32,6 +32,7 @@ class _MusicPlayerState extends State<MusicPlayer> {
   StreamController<Duration>? _streamController;
   Timer? _timer;
   Duration _elapsedTime = Duration.zero;
+  Color textColor = Colors.white;
 
   @override
   void dispose() {
@@ -75,8 +76,8 @@ class _MusicPlayerState extends State<MusicPlayer> {
 
             if (response.statusCode == 200) {
               final data = jsonDecode(response.body);
-              prefs.setString('accessToken', data['access_token']);
-              prefs.setString('refreshToken', data['refresh_token']);
+              await prefs.setString('accessToken', data['access_token']);
+              await prefs.setString('refreshToken', data['refresh_token']);
               widget.spotify = SpotifyApi.withAccessToken(data['access_token']);
             } else {
               throw Exception('Failed to refresh access token');
@@ -174,12 +175,18 @@ class _MusicPlayerState extends State<MusicPlayer> {
         final tempSongColor = await getImagePalette(NetworkImage(image));
         if (tempSongColor != null) {
           music.songColor = tempSongColor;
+          // Compute luminance of the color
+          double luminance = tempSongColor.computeLuminance();
+
+          // If the color is light, set text and icons to black. Otherwise, set them to white.
+          textColor = luminance > 0.5 ? Colors.black : Colors.white;
+
+          // Now you can use `textColor` for your text and icons.
         }
       }
       music.artistImage = track.artists?.first.images?.first.url;
       setState(() {});
     }
-    
 
     setState(() {});
   }
@@ -224,13 +231,13 @@ class _MusicPlayerState extends State<MusicPlayer> {
                                       child: Text(
                                         music.songName ?? '',
                                         style: textTheme.titleMedium
-                                            ?.copyWith(color: Colors.white),
+                                            ?.copyWith(color: textColor),
                                       ),
                                     ),
                                     Text(
                                       music.artistName ?? '-',
                                       style: textTheme.bodySmall
-                                          ?.copyWith(color: Colors.white60),
+                                          ?.copyWith(color: textColor),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ],
@@ -246,7 +253,7 @@ class _MusicPlayerState extends State<MusicPlayer> {
                               : Icons.favorite_outline,
                           color: music.isLiked == true
                               ? CustomColors.primaryColor
-                              : Colors.white,
+                              : textColor,
                         ),
                       ],
                     ),
@@ -265,10 +272,10 @@ class _MusicPlayerState extends State<MusicPlayer> {
                                     const Duration(minutes: 0),
                                 bufferedBarColor: Colors.white38,
                                 baseBarColor: Colors.white10,
-                                thumbColor: Colors.white,
-                                timeLabelTextStyle: const TextStyle(
-                                    color: Colors.white, fontSize: 12),
-                                progressBarColor: Colors.white,
+                                thumbColor: textColor,
+                                timeLabelTextStyle: TextStyle(
+                                    color: textColor, fontSize: 12),
+                                progressBarColor: textColor,
                                 onSeek: (duration) {
                                   widget.spotify?.player
                                       .seek(duration.inMilliseconds);
@@ -288,8 +295,8 @@ class _MusicPlayerState extends State<MusicPlayer> {
                                                   music: music,
                                                 )));
                                   },
-                                  icon: const Icon(Icons.lyrics_outlined,
-                                      color: Colors.white)),
+                                  icon: Icon(Icons.lyrics_outlined,
+                                      color: textColor)),
                               IconButton(
                                   onPressed: () async {
                                     await widget.spotify!.player.previous();
@@ -300,8 +307,8 @@ class _MusicPlayerState extends State<MusicPlayer> {
                                     _timer?.cancel();
                                     _startTimer();
                                   },
-                                  icon: const Icon(Icons.skip_previous,
-                                      color: Colors.white, size: 36)),
+                                  icon: Icon(Icons.skip_previous,
+                                      color: textColor, size: 36)),
                               IconButton(
                                   onPressed: () async {
                                     PlaybackState? newState;
@@ -323,7 +330,7 @@ class _MusicPlayerState extends State<MusicPlayer> {
                                     music.isPlaying == true
                                         ? Icons.pause
                                         : Icons.play_circle,
-                                    color: Colors.white,
+                                    color: textColor,
                                     size: 45,
                                   )),
                               IconButton(
@@ -336,8 +343,8 @@ class _MusicPlayerState extends State<MusicPlayer> {
                                     _timer?.cancel();
                                     _startTimer();
                                   },
-                                  icon: const Icon(Icons.skip_next,
-                                      color: Colors.white, size: 36)),
+                                  icon: Icon(Icons.skip_next,
+                                      color: textColor, size: 36)),
                               IconButton(
                                   onPressed: () async {
                                     Navigator.push(context,
@@ -345,8 +352,8 @@ class _MusicPlayerState extends State<MusicPlayer> {
                                       return SettingsPage();
                                     }));
                                   },
-                                  icon: const Icon(Icons.settings,
-                                      color: Colors.white)),
+                                  icon: Icon(Icons.settings,
+                                      color: textColor)),
                             ],
                           )
                         ],

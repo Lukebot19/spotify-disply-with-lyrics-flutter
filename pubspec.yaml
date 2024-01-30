@@ -55,6 +55,8 @@ dependencies:
   shelf: ^1.4.1
   shared_preferences: ^2.2.2
   marquee: ^2.1.1
+  launch_at_startup: ^0.2.2
+  package_info_plus: ^5.0.1
 
 dev_dependencies:
   flutter_test:
