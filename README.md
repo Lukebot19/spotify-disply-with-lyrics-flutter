@@ -2,6 +2,13 @@
 
 This is a Flutter application that displays lyrics for the currently playing song on Spotify. It fetches lyrics from a specified source and syncs them with the song playback.
 
+## Images
+<p>
+  <img src="./assets/readme/main.png" width="30%" align="top" />
+  <img src="./assets/readme/lyrics.png" width="30%" align="top" /> 
+  <img src="./assets/readme/settings.png" width="30%" align="top" />
+</p>
+
 ## How it Works
 
 The application uses the Spotify API to get the currently playing song and its progress. It then fetches the lyrics for the song and scrolls through them in sync with the song playback. It also includes controls for resuming/pausing a song and skipping songs. In addition to options for starting on launch and always on top.
