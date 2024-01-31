@@ -6,6 +6,20 @@ This is a Flutter application that displays lyrics for the currently playing son
 
 The application uses the Spotify API to get the currently playing song and its progress. It then fetches the lyrics for the song and scrolls through them in sync with the song playback. It also includes controls for resuming/pausing a song and skipping songs. In addition to options for starting on launch and always on top.
 
+## Environment Variables
+
+This application uses environment variables to manage sensitive data like the Spotify client ID and secret. These variables should be stored in a `.env` file in the root of your project.
+
+Here's an example of what your `.env` file should look like:
+
+```env
+SPOTIFY_CLIENT_ID=your_client_id
+SPOTIFY_CLIENT_SECRET=your_client_secret
+```
+Replace your_client_id and your_client_secret with your actual Spotify client ID and secret.
+
+Note: Do not include the .env file in your version control system. Add .env to your .gitignore file to prevent it from being committed to your Git repository.
+
 ## Building the App
 
 To build an executable file of this application for Windows, follow these steps:

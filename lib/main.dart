@@ -10,8 +10,11 @@ import 'dart:io';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart' as dotenv;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.dotenv.load(fileName: 'lib/.env');
 
   PackageInfo packageInfo = await PackageInfo.fromPlatform();
 
