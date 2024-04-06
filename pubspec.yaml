@@ -58,6 +58,10 @@ dependencies:
   launch_at_startup: ^0.2.2
   package_info_plus: ^5.0.1
   flutter_dotenv: ^5.0.0
+  bluetooth_low_energy_windows: ^5.0.3
+  bluetooth_low_energy: ^5.0.6
+  convert: ^3.1.1
+  provider: ^6.1.2
 
 dev_dependencies:
   flutter_test:

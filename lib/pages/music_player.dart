@@ -1,21 +1,23 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:audio_video_progress_bar/audio_video_progress_bar.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:palette_generator/palette_generator.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spotify/spotify.dart';
 import 'package:spotify_display/constants/colors.dart';
 import 'package:spotify_display/constants/strings.dart';
-import 'package:spotify_display/models/music.dart';
 import 'package:spotify_display/pages/landing_page.dart';
 import 'package:spotify_display/pages/lyrics_page.dart';
 import 'package:spotify_display/pages/settings_page.dart';
+import 'package:spotify_display/states/main_state.dart';
 import 'package:spotify_display/utils/preferences.dart';
 import 'package:spotify_display/widgets/art_work_image.dart';
 import 'package:http/http.dart' as http;
+
+import '../models/music.dart';
+import '../widgets/base_widget.dart';
 
 class MusicPlayer extends StatefulWidget {
   SpotifyApi? spotify;
@@ -26,9 +28,6 @@ class MusicPlayer extends StatefulWidget {
 }
 
 class _MusicPlayerState extends State<MusicPlayer> {
-  Music music = Music();
-  bool _currentTrack = false;
-
   StreamController<Duration>? _streamController;
   Timer? _timer;
   Duration _elapsedTime = Duration.zero;
@@ -41,14 +40,7 @@ class _MusicPlayerState extends State<MusicPlayer> {
     super.dispose();
   }
 
-  @override
-  void initState() {
-    connectToSpotify();
-    pollSpotify();
-    super.initState();
-  }
-
-  void pollSpotify() {
+  void pollSpotify(MainState state) {
     Timer.periodic(const Duration(seconds: 1), (timer) async {
       PlaybackState? _currentTrack;
       try {
@@ -93,37 +85,38 @@ class _MusicPlayerState extends State<MusicPlayer> {
         _currentTrack = null;
       }
       if (_currentTrack != null) {
-        setMusicState(_currentTrack);
+        setMusicState(_currentTrack, state);
       }
     });
   }
 
-  void _startTimer() {
-    if (music.currentPosition == null) {
+  void _startTimer(MainState state) {
+    if (state.music.currentPosition == null) {
       return;
     }
     _timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-      _streamController?.add(Duration(milliseconds: music.currentPosition!));
+      _streamController
+          ?.add(Duration(milliseconds: state.music.currentPosition!));
     });
   }
 
-  Future<void> connectToSpotify() async {
-    await getCurrentTrack();
+  Future<void> connectToSpotify(MainState state) async {
+    await getCurrentTrack(state);
 
-    if (_currentTrack == false) {
+    if (state.currentTrack == false) {
       // Poll the api every second until the playerstate has changed
       Timer.periodic(const Duration(seconds: 1), (timer) async {
-        await getCurrentTrack();
-        if (_currentTrack == true) {
+        await getCurrentTrack(state);
+        if (state.currentTrack == true) {
           timer.cancel();
         }
       });
     }
     _streamController = StreamController<Duration>();
-    _startTimer();
+    _startTimer(state);
   }
 
-  Future<void> getCurrentTrack() async {
+  Future<void> getCurrentTrack(MainState state) async {
     PlaybackState? currentTrack;
     try {
       currentTrack = await widget.spotify?.player.playbackState();
@@ -138,28 +131,49 @@ class _MusicPlayerState extends State<MusicPlayer> {
       currentTrack = null;
     }
     if (currentTrack != null) {
-      _currentTrack = true;
-      setMusicState(currentTrack);
+      setMusicState(currentTrack, state);
+      state.setCurrentTrack(true);
     } else {
-      _currentTrack = false;
+      state.setCurrentTrack(false);
     }
     if (mounted) {
       setState(() {});
     }
   }
 
-  setMusicState(PlaybackState currentTrack) async {
-    music.trackId = currentTrack.item?.id ?? "";
-    music.songName = currentTrack.item?.name;
-    music.artistName = currentTrack.item?.artists?.first.name ?? "";
-    music.songImage = currentTrack.item!.album?.images?.first.url;
-    music.artistImage = currentTrack.item?.artists?.first.images?.first.url;
-    music.duration = currentTrack.item?.duration;
-    music.isPlaying = currentTrack.isPlaying;
-    music.isShuffling = currentTrack.isShuffling;
-    music.repeatState = currentTrack.repeatState;
-    music.currentPosition = currentTrack.progress_ms;
-    music.isLiked = await widget.spotify!.tracks.me.containsOne(music.trackId!);
+  setMusicState(PlaybackState currentTrack, MainState state) async {
+    if (state.music != null) {
+      // Check if the song in the state is the same as the current song
+      if (state.music.trackId == currentTrack.item?.id) {
+        // Update the current position, isPlaying and isShuffling
+        state.music.currentPosition = currentTrack.progress_ms;
+        state.music.isPlaying = currentTrack.isPlaying;
+        state.music.isShuffling = currentTrack.isShuffling;
+        state.music.isLiked = await widget.spotify!.tracks.me.containsOne(
+          currentTrack.item?.id.toString() ?? "",
+        );
+        setState(() {});
+        return;
+      }
+    }
+
+    Music music = Music(
+      trackId: currentTrack.item?.id ?? "",
+      songName: currentTrack.item?.name ?? "",
+      artistName: currentTrack.item?.artists?.first.name ?? "",
+      songImage: currentTrack.item!.album?.images?.first.url,
+      artistImage: currentTrack.item?.artists?.first.images?.first.url,
+      duration: currentTrack.item?.duration,
+      isPlaying: currentTrack.isPlaying,
+      isShuffling: currentTrack.isShuffling,
+      repeatState: currentTrack.repeatState,
+      currentPosition: currentTrack.progress_ms,
+      isLiked: await widget.spotify!.tracks.me.containsOne(
+        currentTrack.item?.id.toString() ?? "",
+      ),
+    );
+
+    state.setMusic(music);
 
     Track? track = currentTrack.item;
     if (track == null) {
@@ -167,14 +181,24 @@ class _MusicPlayerState extends State<MusicPlayer> {
     }
     String? tempSongName = track.name;
     if (tempSongName != null) {
-      music.songName = tempSongName;
-      music.artistName = track.artists?.first.name ?? "";
+      state.music.songName = tempSongName;
+      state.music.artistName = track.artists?.first.name ?? "";
       String? image = track.album?.images?.first.url;
       if (image != null) {
-        music.songImage = image;
+        state.music.songImage = image;
         final tempSongColor = await getImagePalette(NetworkImage(image));
         if (tempSongColor != null) {
-          music.songColor = tempSongColor;
+          state.setColours(
+            tempSongColor.red,
+            tempSongColor.green,
+            tempSongColor.blue,
+          );
+
+          if (state.ledCharacteristic != null) {
+            state.sendCommand();
+          }
+
+          state.music.songColor = tempSongColor;
           // Compute luminance of the color
           double luminance = tempSongColor.computeLuminance();
 
@@ -184,7 +208,7 @@ class _MusicPlayerState extends State<MusicPlayer> {
           // Now you can use `textColor` for your text and icons.
         }
       }
-      music.artistImage = track.artists?.first.images?.first.url;
+      state.music.artistImage = track.artists?.first.images?.first.url;
       setState(() {});
     }
 
@@ -201,193 +225,219 @@ class _MusicPlayerState extends State<MusicPlayer> {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     return Scaffold(
-      backgroundColor: music.songColor,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 26),
-          child: _currentTrack == true
-              ? Column(
-                  children: [
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
+      body: BaseWidget<MainState>(
+        state: Provider.of<MainState>(context),
+        onStateReady: (state) async {
+          await connectToSpotify(state);
+          pollSpotify(state);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {});
+            }
+          });
+        },
+        builder: (context, state, child) {
+          return Scaffold(
+            backgroundColor: state.music.songColor,
+            body: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 26),
+                child: state.currentTrack == true
+                    ? Column(
+                        children: [
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Center(
-                                child: ArtWorkImage(image: music.songImage),
-                              ),
-                              SizedBox(width: 10),
                               Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.start,
                                   children: [
-                                    SingleChildScrollView(
-                                      clipBehavior: Clip.antiAlias,
-                                      scrollDirection: Axis.horizontal,
-                                      child: Text(
-                                        music.songName ?? '',
-                                        style: textTheme.titleMedium
-                                            ?.copyWith(color: textColor),
+                                    Center(
+                                      child: ArtWorkImage(
+                                          image: state.music.songImage),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          SingleChildScrollView(
+                                            clipBehavior: Clip.antiAlias,
+                                            scrollDirection: Axis.horizontal,
+                                            child: Text(
+                                              state.music.songName ?? '',
+                                              style: textTheme.titleMedium
+                                                  ?.copyWith(color: textColor),
+                                            ),
+                                          ),
+                                          Text(
+                                            state.music.artistName ?? '-',
+                                            style: textTheme.bodySmall
+                                                ?.copyWith(color: textColor),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                    Text(
-                                      music.artistName ?? '-',
-                                      style: textTheme.bodySmall
-                                          ?.copyWith(color: textColor),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
+                                    const SizedBox(width: 10),
                                   ],
                                 ),
                               ),
-                              SizedBox(width: 10),
+                              Icon(
+                                state.music.isLiked == true
+                                    ? Icons.favorite
+                                    : Icons.favorite_outline,
+                                color: state.music.isLiked == true
+                                    ? CustomColors.primaryColor
+                                    : textColor,
+                              ),
                             ],
                           ),
-                        ),
-                        Icon(
-                          music.isLiked == true
-                              ? Icons.favorite
-                              : Icons.favorite_outline,
-                          color: music.isLiked == true
-                              ? CustomColors.primaryColor
-                              : textColor,
-                        ),
-                      ],
-                    ),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 16),
-                          StreamBuilder(
-                            stream: _streamController?.stream,
-                            builder: (context, data) {
-                              return ProgressBar(
-                                progress: data.data ??
-                                    Duration(
-                                        milliseconds: music.currentPosition!),
-                                total: music.duration ??
-                                    const Duration(minutes: 0),
-                                bufferedBarColor: Colors.white38,
-                                baseBarColor: Colors.white10,
-                                thumbColor: textColor,
-                                timeLabelTextStyle: TextStyle(
-                                    color: textColor, fontSize: 12),
-                                progressBarColor: textColor,
-                                onSeek: (duration) {
-                                  widget.spotify?.player
-                                      .seek(duration.inMilliseconds);
-                                },
-                              );
-                            },
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              IconButton(
-                                  onPressed: () {
-                                    Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                            builder: (context) => LyricsPage(
-                                                  music: music,
-                                                )));
+                          Expanded(
+                            child: Column(
+                              children: [
+                                const SizedBox(height: 16),
+                                StreamBuilder(
+                                  stream: _streamController?.stream,
+                                  builder: (context, data) {
+                                    return ProgressBar(
+                                      progress: data.data ??
+                                          Duration(
+                                              milliseconds:
+                                                  state.music.currentPosition!),
+                                      total: state.music.duration ??
+                                          const Duration(minutes: 0),
+                                      bufferedBarColor: Colors.white38,
+                                      baseBarColor: Colors.white10,
+                                      thumbColor: textColor,
+                                      timeLabelTextStyle: TextStyle(
+                                          color: textColor, fontSize: 12),
+                                      progressBarColor: textColor,
+                                      onSeek: (duration) {
+                                        widget.spotify?.player
+                                            .seek(duration.inMilliseconds);
+                                      },
+                                    );
                                   },
-                                  icon: Icon(Icons.lyrics_outlined,
-                                      color: textColor)),
-                              IconButton(
-                                  onPressed: () async {
-                                    await widget.spotify!.player.previous();
-                                    PlaybackState newState = await widget
-                                        .spotify!.player
-                                        .playbackState();
-                                    setMusicState(newState);
-                                    _timer?.cancel();
-                                    _startTimer();
-                                  },
-                                  icon: Icon(Icons.skip_previous,
-                                      color: textColor, size: 36)),
-                              IconButton(
-                                  onPressed: () async {
-                                    PlaybackState? newState;
-                                    if (music.isPlaying == true) {
-                                      newState =
-                                          await widget.spotify!.player.pause();
-                                      _timer?.cancel();
-                                    } else {
-                                      // Manually call the Spotify API endpoint to start or resume playback
-                                      SharedPreferences prefs =
-                                          await SharedPreferences
-                                              .getInstance();
-                                      String? accessToken = prefs.getString('accessToken');
-                                      var response = await http.put(
-                                        Uri.parse(
-                                            'https://api.spotify.com/v1/me/player/play'),
-                                        headers: {
-                                          'Authorization':
-                                              'Bearer $accessToken',
+                                ),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    IconButton(
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const LyricsPage(),
+                                            ),
+                                          );
                                         },
-                                      );
+                                        icon: Icon(Icons.lyrics_outlined,
+                                            color: textColor)),
+                                    IconButton(
+                                        onPressed: () async {
+                                          await widget.spotify!.player
+                                              .previous();
+                                          PlaybackState newState = await widget
+                                              .spotify!.player
+                                              .playbackState();
+                                          setMusicState(newState, state);
+                                          _timer?.cancel();
+                                          _startTimer(state);
+                                        },
+                                        icon: Icon(Icons.skip_previous,
+                                            color: textColor, size: 36)),
+                                    IconButton(
+                                        onPressed: () async {
+                                          PlaybackState? newState;
+                                          if (state.music.isPlaying == true) {
+                                            newState = await widget
+                                                .spotify!.player
+                                                .pause();
+                                            _timer?.cancel();
+                                          } else {
+                                            // Manually call the Spotify API endpoint to start or resume playback
+                                            SharedPreferences prefs =
+                                                await SharedPreferences
+                                                    .getInstance();
+                                            String? accessToken =
+                                                prefs.getString('accessToken');
+                                            var response = await http.put(
+                                              Uri.parse(
+                                                  'https://api.spotify.com/v1/me/player/play'),
+                                              headers: {
+                                                'Authorization':
+                                                    'Bearer $accessToken',
+                                              },
+                                            );
 
-                                      if (response.statusCode == 204) {
-                                        // The playback started successfully
-                                        _timer?.cancel();
-                                        _startTimer();
-                                        newState = await widget
-                                            .spotify!.player
-                                            .playbackState();
-                                        setMusicState(newState);
-                                      } else {
-                                        // Handle the error
-                                        print(
-                                            'Failed to start playback: ${response.statusCode}');
-                                      }
-                                    }
-                                    setMusicState(newState!);
+                                            if (response.statusCode == 204) {
+                                              // The playback started successfully
+                                              _timer?.cancel();
+                                              _startTimer(state);
+                                              newState = await widget
+                                                  .spotify!.player
+                                                  .playbackState();
+                                              setMusicState(newState, state);
+                                            } else {
+                                              // Handle the error
+                                              print(
+                                                  'Failed to start playback: ${response.statusCode}');
+                                            }
+                                            return;
+                                          }
+                                          setMusicState(newState!, state);
 
-                                    setState(() {});
-                                  },
-                                  icon: Icon(
-                                    music.isPlaying == true
-                                        ? Icons.pause
-                                        : Icons.play_circle,
-                                    color: textColor,
-                                    size: 45,
-                                  )),
-                              IconButton(
-                                  onPressed: () async {
-                                    await widget.spotify!.player.next();
-                                    PlaybackState newState = await widget
-                                        .spotify!.player
-                                        .playbackState();
-                                    setMusicState(newState);
-                                    _timer?.cancel();
-                                    _startTimer();
-                                  },
-                                  icon: Icon(Icons.skip_next,
-                                      color: textColor, size: 36)),
-                              IconButton(
-                                  onPressed: () async {
-                                    Navigator.push(context,
-                                        MaterialPageRoute(builder: (context) {
-                                      return SettingsPage();
-                                    }));
-                                  },
-                                  icon: Icon(Icons.settings,
-                                      color: textColor)),
-                            ],
+                                          setState(() {});
+                                        },
+                                        icon: Icon(
+                                          state.music.isPlaying == true
+                                              ? Icons.pause
+                                              : Icons.play_circle,
+                                          color: textColor,
+                                          size: 45,
+                                        )),
+                                    IconButton(
+                                        onPressed: () async {
+                                          await widget.spotify!.player.next();
+                                          PlaybackState newState = await widget
+                                              .spotify!.player
+                                              .playbackState();
+                                          setMusicState(newState, state);
+                                          _timer?.cancel();
+                                          _startTimer(state);
+                                        },
+                                        icon: Icon(Icons.skip_next,
+                                            color: textColor, size: 36)),
+                                    IconButton(
+                                        onPressed: () async {
+                                          Navigator.push(context,
+                                              MaterialPageRoute(
+                                                  builder: (context) {
+                                            return SettingsPage();
+                                          }));
+                                        },
+                                        icon: Icon(Icons.settings,
+                                            color: textColor)),
+                                  ],
+                                )
+                              ],
+                            ),
                           )
                         ],
+                      )
+                    : const Center(
+                        child: Text("No music playing..."),
                       ),
-                    )
-                  ],
-                )
-              : const Center(
-                  child: CircularProgressIndicator(),
-                ),
-        ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

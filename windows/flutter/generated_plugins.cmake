@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   audioplayers_windows
+  bluetooth_low_energy_windows
   screen_retriever
   url_launcher_windows
   window_manager

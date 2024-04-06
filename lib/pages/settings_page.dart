@@ -7,6 +7,8 @@ import 'package:spotify_display/utils/resize_window.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:window_size/window_size.dart' as window_size;
 
+import 'bluetooth_page.dart';
+
 class SettingsPage extends StatefulWidget {
   @override
   _SettingsPageState createState() => _SettingsPageState();
@@ -156,109 +158,129 @@ class _SettingsPageState extends State<SettingsPage> {
       body: _loading == false
           ? Padding(
               padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  SwitchListTile(
-                    title: const Text(
-                      'Always on Top',
-                      style: TextStyle(color: Colors.white),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    SwitchListTile(
+                      title: const Text(
+                        'Always on Top',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      value: _alwaysOnTop,
+                      onChanged: (bool value) {
+                        setState(() {
+                          _toggleAlwaysOnTop();
+                        });
+                      },
+                      activeColor: Colors.green,
                     ),
-                    value: _alwaysOnTop,
-                    onChanged: (bool value) {
-                      setState(() {
-                        _toggleAlwaysOnTop();
-                      });
-                    },
-                    activeColor: Colors.green,
-                  ),
-                  SwitchListTile(
-                    title: const Text(
-                      'Launch at Startup',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    value: _startUp,
-                    onChanged: (bool value) async {
-                      await _setStartUp(value);
+                    SwitchListTile(
+                      title: const Text(
+                        'Launch at Startup',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      value: _startUp,
+                      onChanged: (bool value) async {
+                        await _setStartUp(value);
 
-                      setState(() {
-                        _startUp = value;
-                      });
-                    },
-                    activeColor: Colors.green,
-                  ),
-                  const SizedBox(height: 20),
-                  DropdownButton<String>(
-                    dropdownColor: const Color(0xFF121212),
-                    value: _windowLocation,
-                    style: const TextStyle(color: Colors.white),
-                    items: [
-                      'top left',
-                      'top right',
-                      'bottom left',
-                      'bottom right'
-                    ].map((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(
-                          'Window Location: $value',
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (String? value) {
-                      setState(() {
-                        _setWindowLocation(value!);
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  DropdownButton<String>(
-                    dropdownColor: const Color(0xFF121212),
-                    value: _screenIndex != null
-                        ? 'Screen ${_screenList!.indexOf(_screenIndex!) + 1}'
-                        : null,
-                    style: const TextStyle(color: Colors.white),
-                    items: _screenListStrings?.map((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(
-                          value,
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (String? value) {
-                      setState(() {
-                        _setScreenIndex(value != null
-                            ? int.parse(value.split(' ')[1]) - 1
-                            : null);
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  TextButton(
-                    onPressed: _clearPreferences,
-                    style: TextButton.styleFrom(
-                      backgroundColor: Colors.green,
+                        setState(() {
+                          _startUp = value;
+                        });
+                      },
+                      activeColor: Colors.green,
                     ),
-                    child: const Text(
-                      'Clear Preferences',
-                      style: TextStyle(color: Colors.white),
+                    const SizedBox(height: 20),
+                    DropdownButton<String>(
+                      dropdownColor: const Color(0xFF121212),
+                      value: _windowLocation,
+                      style: const TextStyle(color: Colors.white),
+                      items: [
+                        'top left',
+                        'top right',
+                        'bottom left',
+                        'bottom right'
+                      ].map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(
+                            'Window Location: $value',
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (String? value) {
+                        setState(() {
+                          _setWindowLocation(value!);
+                        });
+                      },
                     ),
-                  ),
-                  SizedBox(height: 20),
-                  TextButton(
-                    onPressed: () {
-                      exit(0);
-                    },
-                    style: TextButton.styleFrom(
-                      backgroundColor: Colors.green,
+                    const SizedBox(height: 20),
+                    DropdownButton<String>(
+                      dropdownColor: const Color(0xFF121212),
+                      value: _screenIndex != null
+                          ? 'Screen ${_screenList!.indexOf(_screenIndex!) + 1}'
+                          : null,
+                      style: const TextStyle(color: Colors.white),
+                      items: _screenListStrings?.map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(
+                            value,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (String? value) {
+                        setState(() {
+                          _setScreenIndex(value != null
+                              ? int.parse(value.split(' ')[1]) - 1
+                              : null);
+                        });
+                      },
                     ),
-                    child: const Text(
-                      'Close App',
-                      style: TextStyle(color: Colors.white),
+                    const SizedBox(height: 20),
+                    TextButton(
+                      onPressed: () async {
+                        // Show a dialog with a list of available Bluetooth devices
+                        // to connect to
+                        await Navigator.push(context,
+                            MaterialPageRoute(builder: (context) {
+                          return const ScannerView();
+                        }));
+                      },
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.green,
+                      ),
+                      child: const Text(
+                        'Connect to Bluetooth Device',
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 20),
+                    TextButton(
+                      onPressed: _clearPreferences,
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.green,
+                      ),
+                      child: const Text(
+                        'Clear Preferences',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    TextButton(
+                      onPressed: () {
+                        exit(0);
+                      },
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.green,
+                      ),
+                      child: const Text(
+                        'Close App',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             )
           : const Center(child: CircularProgressIndicator()),

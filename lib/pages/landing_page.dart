@@ -10,6 +10,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:shelf/shelf.dart' as shelf;
 import 'package:shelf/shelf_io.dart' as io;
 
+import '../provider/main_provider.dart';
+
 class LandingPage extends StatefulWidget {
   @override
   _LandingPageState createState() => _LandingPageState();
@@ -35,17 +37,20 @@ class _LandingPageState extends State<LandingPage> {
       if (spotify == null) {
         String accessToken = prefs.getString('accessToken') ?? '';
         spotify = SpotifyApi.withAccessToken(accessToken);
-        
+
         await prefs.setBool('isConnected', true);
-        await prefs.setString('accessToken', spotify?.client.credentials.accessToken);
-        await prefs.setString('refreshToken', spotify?.client.credentials.refreshToken ?? '');
+        await prefs.setString(
+            'accessToken', spotify?.client.credentials.accessToken);
+        await prefs.setString(
+            'refreshToken', spotify?.client.credentials.refreshToken ?? '');
       }
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-            builder: (context) => MusicPlayer(
-                  spotify: spotify,
-                )),
+          builder: (context) => MusicPlayer(
+            spotify: spotify,
+          ),
+        ),
       );
     }
   }
