@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:spotify_display/storage/storage.dart';
 import 'package:window_manager/window_manager.dart';
 
 resizeWindow(double width, double height) async {
   await windowManager.ensureInitialized();
 
   await windowManager.setSize(Size(width, height), animate: false);
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  String alignment = prefs.getString('windowLocation') ?? 'top left';
+
+  String alignment = await StorageService().getWindowLocation();
   await positionWindow(alignment);
 }
 

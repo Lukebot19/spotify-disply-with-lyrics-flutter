@@ -2,10 +2,13 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:spotify_display/storage.dart';
+import 'package:spotify_display/storage/storage.dart';
 import 'package:spotify_display/utils/resize_window.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:window_size/window_size.dart' as window_size;
+
+import 'bluetooth_page.dart';
 
 class SettingsPage extends StatefulWidget {
   @override
@@ -42,31 +45,40 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _loadPreferences() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
     await _getScreenList();
 
-    setState(() {
-      _alwaysOnTop = prefs.getBool('alwaysOnTop') ?? false;
-      int tempIndex = prefs.getInt('screenIndex') ?? 1;
-      try {
-        _screenIndex = _screenList![tempIndex - 1];
-      } catch (_) {
-        _screenIndex = _screenList![0];
+    await StorageService().getAlwaysOnTop().then((value) {
+      if (value == null) {
+        _alwaysOnTop = false;
       }
-      _windowLocation = prefs.getString('windowLocation') ?? 'top left';
+      _alwaysOnTop = value;
     });
+    await StorageService().getScreenIndex().then((value) {
+      if (value == null) {
+        _screenIndex = _screenList![0];
+      } else {
+        _screenIndex = _screenList![value];
+      }
+    });
+    await StorageService().getWindowLocation().then((value) {
+      if (value == null) {
+        _windowLocation = 'top left';
+      } else {
+        _windowLocation = value;
+      }
+    });
+
+    setState(() {});
   }
 
   void _savePreferences() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('alwaysOnTop', _alwaysOnTop);
-    await prefs.setInt('screenIndex', _screenList!.indexOf(_screenIndex!) + 1);
-    await prefs.setString('windowLocation', _windowLocation);
+    await StorageService().saveAlwaysOnTop(_alwaysOnTop);
+    await StorageService().saveScreenIndex(_screenList!.indexOf(_screenIndex!));
+    await StorageService().saveWindowLocation(_windowLocation);
   }
 
   void _clearPreferences() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.clear();
+    Storage().clear();
   }
 
   void _toggleAlwaysOnTop() async {
@@ -116,9 +128,8 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() {});
   }
 
-  Future<void> _setStartUp(startUp) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('startUp', startUp);
+  Future<void> _setStartUp(bool startUp) async {
+    await StorageService().saveStartUp(startUp);
     if (startUp) {
       await launchAtStartup.enable();
     } else {
@@ -127,8 +138,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _getStartUp() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    bool startUp = prefs.getBool('startUp') ?? false;
+    bool startUp = await StorageService().getStartUp();
     setState(() {
       _startUp = startUp;
     });
@@ -156,109 +166,130 @@ class _SettingsPageState extends State<SettingsPage> {
       body: _loading == false
           ? Padding(
               padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  SwitchListTile(
-                    title: const Text(
-                      'Always on Top',
-                      style: TextStyle(color: Colors.white),
+              child: SingleChildScrollView(
+                
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    SwitchListTile(
+                      title: const Text(
+                        'Always on Top',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      value: _alwaysOnTop,
+                      onChanged: (bool value) {
+                        setState(() {
+                          _toggleAlwaysOnTop();
+                        });
+                      },
+                      activeColor: Colors.green,
                     ),
-                    value: _alwaysOnTop,
-                    onChanged: (bool value) {
-                      setState(() {
-                        _toggleAlwaysOnTop();
-                      });
-                    },
-                    activeColor: Colors.green,
-                  ),
-                  SwitchListTile(
-                    title: const Text(
-                      'Launch at Startup',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    value: _startUp,
-                    onChanged: (bool value) async {
-                      await _setStartUp(value);
+                    SwitchListTile(
+                      title: const Text(
+                        'Launch at Startup',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      value: _startUp,
+                      onChanged: (bool value) async {
+                        await _setStartUp(value);
 
-                      setState(() {
-                        _startUp = value;
-                      });
-                    },
-                    activeColor: Colors.green,
-                  ),
-                  const SizedBox(height: 20),
-                  DropdownButton<String>(
-                    dropdownColor: const Color(0xFF121212),
-                    value: _windowLocation,
-                    style: const TextStyle(color: Colors.white),
-                    items: [
-                      'top left',
-                      'top right',
-                      'bottom left',
-                      'bottom right'
-                    ].map((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(
-                          'Window Location: $value',
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (String? value) {
-                      setState(() {
-                        _setWindowLocation(value!);
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  DropdownButton<String>(
-                    dropdownColor: const Color(0xFF121212),
-                    value: _screenIndex != null
-                        ? 'Screen ${_screenList!.indexOf(_screenIndex!) + 1}'
-                        : null,
-                    style: const TextStyle(color: Colors.white),
-                    items: _screenListStrings?.map((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(
-                          value,
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (String? value) {
-                      setState(() {
-                        _setScreenIndex(value != null
-                            ? int.parse(value.split(' ')[1]) - 1
-                            : null);
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  TextButton(
-                    onPressed: _clearPreferences,
-                    style: TextButton.styleFrom(
-                      backgroundColor: Colors.green,
+                        setState(() {
+                          _startUp = value;
+                        });
+                      },
+                      activeColor: Colors.green,
                     ),
-                    child: const Text(
-                      'Clear Preferences',
-                      style: TextStyle(color: Colors.white),
+                    const SizedBox(height: 20),
+                    DropdownButton<String>(
+                      dropdownColor: const Color(0xFF121212),
+                      value: _windowLocation,
+                      style: const TextStyle(color: Colors.white),
+                      items: [
+                        'top left',
+                        'top right',
+                        'bottom left',
+                        'bottom right'
+                      ].map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(
+                            'Window Location: $value',
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (String? value) {
+                        setState(() {
+                          _setWindowLocation(value!);
+                        });
+                      },
                     ),
-                  ),
-                  SizedBox(height: 20),
-                  TextButton(
-                    onPressed: () {
-                      exit(0);
-                    },
-                    style: TextButton.styleFrom(
-                      backgroundColor: Colors.green,
+                    const SizedBox(height: 20),
+                    DropdownButton<String>(
+                      dropdownColor: const Color(0xFF121212),
+                      value: _screenIndex != null
+                          ? 'Screen ${_screenList!.indexOf(_screenIndex!) + 1}'
+                          : null,
+                      style: const TextStyle(color: Colors.white),
+                      items: _screenListStrings?.map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(
+                            value,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (String? value) {
+                        setState(() {
+                          _setScreenIndex(value != null
+                              ? int.parse(value.split(' ')[1]) - 1
+                              : null);
+                        });
+                      },
                     ),
-                    child: const Text(
-                      'Close App',
-                      style: TextStyle(color: Colors.white),
+                    const SizedBox(height: 20),
+                    TextButton(
+                      onPressed: () async {
+                        // Show a dialog with a list of available Bluetooth devices
+                        // to connect to
+                        await Navigator.push(context,
+                            MaterialPageRoute(builder: (context) {
+                          return const ScannerView();
+                        }));
+                      },
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.green,
+                      ),
+                      child: const Text(
+                        'Connect to DoTint LED Bluetooth Device',
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 20),
+                    TextButton(
+                      onPressed: _clearPreferences,
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.green,
+                      ),
+                      child: const Text(
+                        'Clear Preferences',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    TextButton(
+                      onPressed: () {
+                        exit(0);
+                      },
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.green,
+                      ),
+                      child: const Text(
+                        'Close App',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             )
           : const Center(child: CircularProgressIndicator()),

@@ -1,14 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spotify/spotify.dart';
 import 'package:spotify_display/constants/strings.dart';
 import 'package:spotify_display/pages/music_player.dart';
-import 'package:spotify_display/utils/preferences.dart';
+import 'package:spotify_display/storage/storage.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shelf/shelf.dart' as shelf;
 import 'package:shelf/shelf_io.dart' as io;
+
 
 class LandingPage extends StatefulWidget {
   @override
@@ -26,26 +26,29 @@ class _LandingPageState extends State<LandingPage> {
   }
 
   Future<void> _checkConnection() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    bool isConnected = prefs.getBool('isConnected') ?? false;
+    bool isConnected = await StorageService().getIsConnected();
     setState(() {
       _isConnected = isConnected;
     });
     if (_isConnected) {
       if (spotify == null) {
-        String accessToken = prefs.getString('accessToken') ?? '';
+        Map<String, dynamic> tokens = await StorageService().getTokens();
+        String accessToken = tokens['accessToken'];
         spotify = SpotifyApi.withAccessToken(accessToken);
-        
-        await prefs.setBool('isConnected', true);
-        await prefs.setString('accessToken', spotify?.client.credentials.accessToken);
-        await prefs.setString('refreshToken', spotify?.client.credentials.refreshToken ?? '');
+
+        await StorageService().saveIsConnected(true);
+        await StorageService().saveTokens(
+          refreshToken: spotify?.client.credentials.refreshToken ?? '',
+          accessToken: spotify?.client.credentials.accessToken,
+        );
       }
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-            builder: (context) => MusicPlayer(
-                  spotify: spotify,
-                )),
+          builder: (context) => MusicPlayer(
+            spotify: spotify,
+          ),
+        ),
       );
     }
   }
@@ -85,10 +88,11 @@ class _LandingPageState extends State<LandingPage> {
 
     // Your connectToSpotify function here
     // After successful connection, set the flag in SharedPreferences
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isConnected', true);
-    await prefs.setString('accessToken', client.credentials.accessToken);
-    await prefs.setString('refreshToken', client.credentials.refreshToken);
+    await StorageService().saveIsConnected(true);
+    await StorageService().saveTokens(
+      refreshToken: client.credentials.refreshToken,
+      accessToken: client.credentials.accessToken,
+    );
     _checkConnection();
   }
 
