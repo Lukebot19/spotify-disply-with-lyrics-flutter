@@ -238,7 +238,8 @@ class _MusicPlayerState extends State<MusicPlayer> {
         },
         builder: (context, state, child) {
           return Scaffold(
-            backgroundColor: state.music.songColor,
+            backgroundColor:
+                state.music.songColor ?? const Color.fromARGB(255, 29, 185, 84),
             body: SafeArea(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 26),
@@ -434,7 +435,7 @@ class _MusicPlayerState extends State<MusicPlayer> {
                         ],
                       )
                     : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const Text("No music playing..."),
                           const SizedBox(height: 10),
@@ -444,21 +445,37 @@ class _MusicPlayerState extends State<MusicPlayer> {
                                 Colors.black,
                               ),
                             ),
-                              onPressed: () async {
-                                Navigator.push(context,
-                                    MaterialPageRoute(builder: (context) {
-                                  return SettingsPage();
-                                }));
-                              },
-                              child: Row(
-                                children: [
-                                  Icon(Icons.settings, color:textColor),
-                                  Text(
-                                    "Launch Settings",
-                                    style: TextStyle(color: textColor),
-                                  ),
-                                ],
-                              )),
+                            onPressed: () async {
+                              Navigator.push(context,
+                                  MaterialPageRoute(builder: (context) {
+                                return SettingsPage();
+                              }));
+                            },
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.settings, color: textColor),
+                                const SizedBox(width: 10),
+                                Text(
+                                  "Launch Settings",
+                                  style: TextStyle(color: textColor),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.info,
+                                color: textColor,
+                              ),
+                              Text(
+                                "Powered By Spotify",
+                                style: TextStyle(color: textColor),
+                              ),
+                            ],
+                          )
                         ],
                       ),
               ),
