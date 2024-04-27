@@ -433,28 +433,33 @@ class _MusicPlayerState extends State<MusicPlayer> {
                           )
                         ],
                       )
-                    : Center(
-                        child: Column(
-                          children: [
-                            const Text("No music playing..."),
-                            TextButton(
-                                onPressed: () async {
-                                  Navigator.push(context,
-                                      MaterialPageRoute(builder: (context) {
-                                    return SettingsPage();
-                                  }));
-                                },
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.settings, color: textColor),
-                                    Text(
-                                      "Launch Settings",
-                                      style: TextStyle(color: textColor),
-                                    ),
-                                  ],
-                                )),
-                          ],
-                        ),
+                    : Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text("No music playing..."),
+                          const SizedBox(height: 10),
+                          TextButton(
+                            style: ButtonStyle(
+                              backgroundColor: MaterialStateProperty.all(
+                                Colors.black,
+                              ),
+                            ),
+                              onPressed: () async {
+                                Navigator.push(context,
+                                    MaterialPageRoute(builder: (context) {
+                                  return SettingsPage();
+                                }));
+                              },
+                              child: Row(
+                                children: [
+                                  Icon(Icons.settings, color:textColor),
+                                  Text(
+                                    "Launch Settings",
+                                    style: TextStyle(color: textColor),
+                                  ),
+                                ],
+                              )),
+                        ],
                       ),
               ),
             ),

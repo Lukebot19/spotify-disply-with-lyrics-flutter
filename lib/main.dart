@@ -41,7 +41,6 @@ void main() async {
   int screen = await StorageService().getScreenIndex();
 
   WindowOptions windowOptions = WindowOptions(
-    backgroundColor: Colors.transparent,
     titleBarStyle: TitleBarStyle.hidden,
     alwaysOnTop: onTop,
   );
