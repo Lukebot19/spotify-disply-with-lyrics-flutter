@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive/hive.dart';
 import 'package:spotify_display/pages/landing_page.dart';
+import 'package:spotify_display/provider/main_provider.dart';
+import 'package:spotify_display/storage.dart';
+import 'package:spotify_display/storage/storage.dart';
 import 'package:spotify_display/utils/resize_window.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:window_size/window_size.dart' as window_size;
@@ -11,12 +14,18 @@ import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart' as dotenv;
+import 'package:bluetooth_low_energy/bluetooth_low_energy.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.dotenv.load(fileName: 'lib/.env');
 
   PackageInfo packageInfo = await PackageInfo.fromPlatform();
+
+  // Initialize storage
+  await Storage().init();
+
+  await CentralManager.instance.setUp();
 
   launchAtStartup.setup(
     appName: packageInfo.appName,
@@ -27,10 +36,9 @@ void main() async {
 
   await windowManager.ensureInitialized();
 
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  String alignment = prefs.getString('windowLocation') ?? 'top left';
-  bool onTop = prefs.getBool('alwaysOnTop') ?? false;
-  int screen = prefs.getInt('screenIndex') ?? 1;
+  String alignment = await StorageService().getWindowLocation();
+  bool onTop = await StorageService().getAlwaysOnTop();
+  int screen = await StorageService().getScreenIndex();
 
   WindowOptions windowOptions = WindowOptions(
     backgroundColor: Colors.transparent,
@@ -81,14 +89,16 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Music Player',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
+    return MainProvider(
+      child: MaterialApp(
+        title: 'Music Player',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+          useMaterial3: true,
+        ),
+        home: LandingPage(),
       ),
-      home: LandingPage(),
     );
   }
 }
