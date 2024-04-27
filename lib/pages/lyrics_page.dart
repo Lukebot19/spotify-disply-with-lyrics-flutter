@@ -21,7 +21,6 @@ class LyricsPage extends StatefulWidget {
 }
 
 class _LyricsPageState extends State<LyricsPage> {
-  late MainState state;
   List<Lyric>? lyrics;
   bool not_found = false;
   final ItemScrollController itemScrollController = ItemScrollController();
@@ -46,7 +45,7 @@ class _LyricsPageState extends State<LyricsPage> {
     super.dispose();
   }
 
-  void _startTimer() {
+  void _startTimer(MainState state) {
     int? startPosition = state.music.currentPosition;
     if (startPosition != null) {
       _elapsedTime = Duration(milliseconds: startPosition);
@@ -57,15 +56,13 @@ class _LyricsPageState extends State<LyricsPage> {
     });
   }
 
-  @override
-  void initState() {
-    state = Provider.of<MainState>(context, listen: false);
+  Future<void> getLyrics(MainState state) async {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await resizeWindow(350, 250);
     });
 
     _streamController = StreamController<Duration>.broadcast();
-    _startTimer();
+    _startTimer(state);
 
     streamSubscription = _streamController?.stream.listen((duration) {
       DateTime dt = DateTime(1970, 1, 1).copyWith(
@@ -107,16 +104,16 @@ class _LyricsPageState extends State<LyricsPage> {
 
       setState(() {});
     });
-    super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: state.music.songColor,
       body: BaseWidget<MainState>(
         state: Provider.of<MainState>(context),
-        onStateReady: (state) async {},
+        onStateReady: (state) async {
+          await getLyrics(state);
+        },
         builder: (context, state, child) {
           return Scaffold(
             appBar: AppBar(

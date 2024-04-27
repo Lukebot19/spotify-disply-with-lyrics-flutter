@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive/hive.dart';
 import 'package:spotify_display/pages/landing_page.dart';
 import 'package:spotify_display/provider/main_provider.dart';
+import 'package:spotify_display/storage.dart';
+import 'package:spotify_display/storage/storage.dart';
 import 'package:spotify_display/utils/resize_window.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:window_size/window_size.dart' as window_size;
@@ -20,6 +22,9 @@ void main() async {
 
   PackageInfo packageInfo = await PackageInfo.fromPlatform();
 
+  // Initialize storage
+  await Storage().init();
+
   await CentralManager.instance.setUp();
 
   launchAtStartup.setup(
@@ -31,10 +36,9 @@ void main() async {
 
   await windowManager.ensureInitialized();
 
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  String alignment = prefs.getString('windowLocation') ?? 'top left';
-  bool onTop = prefs.getBool('alwaysOnTop') ?? false;
-  int screen = prefs.getInt('screenIndex') ?? 1;
+  String alignment = await StorageService().getWindowLocation();
+  bool onTop = await StorageService().getAlwaysOnTop();
+  int screen = await StorageService().getScreenIndex();
 
   WindowOptions windowOptions = WindowOptions(
     backgroundColor: Colors.transparent,

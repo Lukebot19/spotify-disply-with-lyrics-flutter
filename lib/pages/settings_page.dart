@@ -2,7 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:spotify_display/storage.dart';
+import 'package:spotify_display/storage/storage.dart';
 import 'package:spotify_display/utils/resize_window.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:window_size/window_size.dart' as window_size;
@@ -44,31 +45,40 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _loadPreferences() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
     await _getScreenList();
 
-    setState(() {
-      _alwaysOnTop = prefs.getBool('alwaysOnTop') ?? false;
-      int tempIndex = prefs.getInt('screenIndex') ?? 1;
-      try {
-        _screenIndex = _screenList![tempIndex - 1];
-      } catch (_) {
-        _screenIndex = _screenList![0];
+    await StorageService().getAlwaysOnTop().then((value) {
+      if (value == null) {
+        _alwaysOnTop = false;
       }
-      _windowLocation = prefs.getString('windowLocation') ?? 'top left';
+      _alwaysOnTop = value;
     });
+    await StorageService().getScreenIndex().then((value) {
+      if (value == null) {
+        _screenIndex = _screenList![0];
+      } else {
+        _screenIndex = _screenList![value];
+      }
+    });
+    await StorageService().getWindowLocation().then((value) {
+      if (value == null) {
+        _windowLocation = 'top left';
+      } else {
+        _windowLocation = value;
+      }
+    });
+
+    setState(() {});
   }
 
   void _savePreferences() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('alwaysOnTop', _alwaysOnTop);
-    await prefs.setInt('screenIndex', _screenList!.indexOf(_screenIndex!) + 1);
-    await prefs.setString('windowLocation', _windowLocation);
+    await StorageService().saveAlwaysOnTop(_alwaysOnTop);
+    await StorageService().saveScreenIndex(_screenList!.indexOf(_screenIndex!));
+    await StorageService().saveWindowLocation(_windowLocation);
   }
 
   void _clearPreferences() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.clear();
+    Storage().clear();
   }
 
   void _toggleAlwaysOnTop() async {
@@ -118,9 +128,8 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() {});
   }
 
-  Future<void> _setStartUp(startUp) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('startUp', startUp);
+  Future<void> _setStartUp(bool startUp) async {
+    await StorageService().saveStartUp(startUp);
     if (startUp) {
       await launchAtStartup.enable();
     } else {
@@ -129,8 +138,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _getStartUp() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    bool startUp = prefs.getBool('startUp') ?? false;
+    bool startUp = await StorageService().getStartUp();
     setState(() {
       _startUp = startUp;
     });
@@ -159,6 +167,7 @@ class _SettingsPageState extends State<SettingsPage> {
           ? Padding(
               padding: const EdgeInsets.all(16.0),
               child: SingleChildScrollView(
+                
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
@@ -251,7 +260,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         backgroundColor: Colors.green,
                       ),
                       child: const Text(
-                        'Connect to Bluetooth Device',
+                        'Connect to DoTint LED Bluetooth Device',
                         style: TextStyle(color: Colors.white),
                       ),
                     ),

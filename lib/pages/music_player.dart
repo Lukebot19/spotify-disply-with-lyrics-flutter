@@ -4,7 +4,6 @@ import 'package:audio_video_progress_bar/audio_video_progress_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spotify/spotify.dart';
 import 'package:spotify_display/constants/colors.dart';
 import 'package:spotify_display/constants/strings.dart';
@@ -12,7 +11,8 @@ import 'package:spotify_display/pages/landing_page.dart';
 import 'package:spotify_display/pages/lyrics_page.dart';
 import 'package:spotify_display/pages/settings_page.dart';
 import 'package:spotify_display/states/main_state.dart';
-import 'package:spotify_display/utils/preferences.dart';
+import 'package:spotify_display/storage.dart';
+import 'package:spotify_display/storage/storage.dart';
 import 'package:spotify_display/widgets/art_work_image.dart';
 import 'package:http/http.dart' as http;
 
@@ -48,9 +48,7 @@ class _MusicPlayerState extends State<MusicPlayer> {
       } catch (e) {
         if (e is AuthorizationException) {
           try {
-            SharedPreferences prefs = await SharedPreferences.getInstance();
-
-            final refreshToken = prefs.getString('refreshToken');
+            final refreshToken = StorageService().getRefreshToken();
 
             // Try to refresh the access token
             final response = await http.post(
@@ -68,14 +66,16 @@ class _MusicPlayerState extends State<MusicPlayer> {
 
             if (response.statusCode == 200) {
               final data = jsonDecode(response.body);
-              await prefs.setString('accessToken', data['access_token']);
-              await prefs.setString('refreshToken', data['refresh_token']);
+              await StorageService().saveTokens(
+                accessToken: data['access_token'],
+                refreshToken: data['refresh_token'],
+              );
               widget.spotify = SpotifyApi.withAccessToken(data['access_token']);
             } else {
               throw Exception('Failed to refresh access token');
             }
           } catch (_) {
-            clearSharedPreferences();
+            Storage().clear();
             Navigator.pushReplacement(context,
                 MaterialPageRoute(builder: (context) {
               return LandingPage();
@@ -122,7 +122,7 @@ class _MusicPlayerState extends State<MusicPlayer> {
       currentTrack = await widget.spotify?.player.playbackState();
     } catch (e) {
       if (e is AuthorizationException) {
-        clearSharedPreferences();
+        Storage().clear();
         Navigator.pushReplacement(context,
             MaterialPageRoute(builder: (context) {
           return LandingPage();
@@ -306,8 +306,10 @@ class _MusicPlayerState extends State<MusicPlayer> {
                                     return ProgressBar(
                                       progress: data.data ??
                                           Duration(
-                                              milliseconds:
-                                                  state.music.currentPosition!),
+                                            milliseconds:
+                                                state.music.currentPosition ??
+                                                    0,
+                                          ),
                                       total: state.music.duration ??
                                           const Duration(minutes: 0),
                                       bufferedBarColor: Colors.white38,
@@ -362,11 +364,11 @@ class _MusicPlayerState extends State<MusicPlayer> {
                                             _timer?.cancel();
                                           } else {
                                             // Manually call the Spotify API endpoint to start or resume playback
-                                            SharedPreferences prefs =
-                                                await SharedPreferences
-                                                    .getInstance();
-                                            String? accessToken =
-                                                prefs.getString('accessToken');
+                                            Map<String, dynamic> tokens =
+                                                await StorageService()
+                                                    .getTokens();
+                                            String accessToken =
+                                                tokens['accessToken'];
                                             var response = await http.put(
                                               Uri.parse(
                                                   'https://api.spotify.com/v1/me/player/play'),
