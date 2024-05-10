@@ -57,7 +57,13 @@ class _SettingsPageState extends State<SettingsPage> {
       if (value == null) {
         _screenIndex = _screenList![0];
       } else {
-        _screenIndex = _screenList![value];
+        try {
+          _screenIndex = _screenList![value];
+        } catch (e) {
+          if (_screenList!.isNotEmpty) {
+            _screenIndex = _screenList![0];
+          }
+        }
       }
     });
     await StorageService().getWindowLocation().then((value) {

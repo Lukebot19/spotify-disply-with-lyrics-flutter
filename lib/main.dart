@@ -61,6 +61,9 @@ Future<void> getScreenList(int index) async {
   window_size.Screen? screenIndex;
 
   index = index - 1;
+  if (index < 0) {
+    index = 0;
+  }
 
   if (index < screenList.length) {
     screenIndex = screenList[index];

@@ -81,6 +81,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.0"
+  auto_scroll:
+    dependency: "direct main"
+    description:
+      name: auto_scroll
+      sha256: "91a65ac64dc211328d679485a4584a3d4e5863e6e3f925b021f8de072a6705ab"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.0"
+  auto_scroll_text:
+    dependency: "direct main"
+    description:
+      name: auto_scroll_text
+      sha256: "8de28056f844f24f13771606417ffa109397f75a66440fe60ec2d38c133e16dc"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.7"
   bluetooth_low_energy:
     dependency: "direct main"
     description:
@@ -270,6 +286,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.1"
+  flutter_resize_observer:
+    dependency: transitive
+    description:
+      name: flutter_resize_observer
+      sha256: "7fea87040d2798832329b75825d3ccba994b7264ac369b7e39ceea2efea031d5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.0"
   flutter_test:
     dependency: "direct dev"
     description: flutter
@@ -661,6 +685,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.6.1"
+  text_scroll:
+    dependency: "direct main"
+    description:
+      name: text_scroll
+      sha256: "7869d86a6fdd725dee56bdd150216a99f0372b82fbfcac319214dbd5f36e1908"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.0"
   typed_data:
     dependency: transitive
     description:

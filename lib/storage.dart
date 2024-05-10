@@ -29,7 +29,11 @@ class Storage {
   Future clear() async {
     // Clear the storage
     final box = await Hive.openBox('secureBox');
-    await box.clear();
+    try {
+      await box.clear();
+    } catch (e) {
+      print(e);
+    }
     await Hive.close();
   }
 }

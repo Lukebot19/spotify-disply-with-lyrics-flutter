@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:audio_video_progress_bar/audio_video_progress_bar.dart';
+import 'package:auto_scroll_text/auto_scroll_text.dart';
 import 'package:flutter/material.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:provider/provider.dart';
-import 'package:spotify/spotify.dart';
+import 'package:spotify/spotify.dart' as Spotify;
 import 'package:spotify_display/constants/colors.dart';
 import 'package:spotify_display/constants/strings.dart';
 import 'package:spotify_display/pages/landing_page.dart';
@@ -20,7 +21,7 @@ import '../models/music.dart';
 import '../widgets/base_widget.dart';
 
 class MusicPlayer extends StatefulWidget {
-  SpotifyApi? spotify;
+  Spotify.SpotifyApi? spotify;
   MusicPlayer({super.key, required this.spotify});
 
   @override
@@ -42,11 +43,11 @@ class _MusicPlayerState extends State<MusicPlayer> {
 
   void pollSpotify(MainState state) {
     Timer.periodic(const Duration(seconds: 1), (timer) async {
-      PlaybackState? _currentTrack;
+      Spotify.PlaybackState? _currentTrack;
       try {
         _currentTrack = await widget.spotify?.player.playbackState();
       } catch (e) {
-        if (e is AuthorizationException) {
+        if (e is Spotify.AuthorizationException) {
           try {
             final refreshToken = StorageService().getRefreshToken();
 
@@ -70,7 +71,8 @@ class _MusicPlayerState extends State<MusicPlayer> {
                 accessToken: data['access_token'],
                 refreshToken: data['refresh_token'],
               );
-              widget.spotify = SpotifyApi.withAccessToken(data['access_token']);
+              widget.spotify =
+                  Spotify.SpotifyApi.withAccessToken(data['access_token']);
             } else {
               throw Exception('Failed to refresh access token');
             }
@@ -117,11 +119,11 @@ class _MusicPlayerState extends State<MusicPlayer> {
   }
 
   Future<void> getCurrentTrack(MainState state) async {
-    PlaybackState? currentTrack;
+    Spotify.PlaybackState? currentTrack;
     try {
       currentTrack = await widget.spotify?.player.playbackState();
     } catch (e) {
-      if (e is AuthorizationException) {
+      if (e is Spotify.AuthorizationException) {
         Storage().clear();
         Navigator.pushReplacement(context,
             MaterialPageRoute(builder: (context) {
@@ -141,7 +143,7 @@ class _MusicPlayerState extends State<MusicPlayer> {
     }
   }
 
-  setMusicState(PlaybackState currentTrack, MainState state) async {
+  setMusicState(Spotify.PlaybackState currentTrack, MainState state) async {
     if (state.music != null) {
       // Check if the song in the state is the same as the current song
       if (state.music.trackId == currentTrack.item?.id) {
@@ -175,7 +177,7 @@ class _MusicPlayerState extends State<MusicPlayer> {
 
     state.setMusic(music);
 
-    Track? track = currentTrack.item;
+    Spotify.Track? track = currentTrack.item;
     if (track == null) {
       return;
     }
@@ -265,14 +267,15 @@ class _MusicPlayerState extends State<MusicPlayer> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          SingleChildScrollView(
-                                            clipBehavior: Clip.antiAlias,
-                                            scrollDirection: Axis.horizontal,
-                                            child: Text(
-                                              state.music.songName ?? '',
-                                              style: textTheme.titleMedium
-                                                  ?.copyWith(color: textColor),
-                                            ),
+                                          AutoScrollText(
+                                            velocity: const Velocity(
+                                                pixelsPerSecond: Offset(40, 0)),
+                                            pauseBetween:
+                                                const Duration(seconds: 2),
+                                            mode: AutoScrollTextMode.bouncing,
+                                            state.music.songName ?? '',
+                                            style: textTheme.titleMedium
+                                                ?.copyWith(color: textColor),
                                           ),
                                           Text(
                                             state.music.artistName ?? '-',
@@ -346,9 +349,9 @@ class _MusicPlayerState extends State<MusicPlayer> {
                                         onPressed: () async {
                                           await widget.spotify!.player
                                               .previous();
-                                          PlaybackState newState = await widget
-                                              .spotify!.player
-                                              .playbackState();
+                                          Spotify.PlaybackState newState =
+                                              await widget.spotify!.player
+                                                  .playbackState();
                                           setMusicState(newState, state);
                                           _timer?.cancel();
                                           _startTimer(state);
@@ -357,7 +360,7 @@ class _MusicPlayerState extends State<MusicPlayer> {
                                             color: textColor, size: 36)),
                                     IconButton(
                                         onPressed: () async {
-                                          PlaybackState? newState;
+                                          Spotify.PlaybackState? newState;
                                           if (state.music.isPlaying == true) {
                                             newState = await widget
                                                 .spotify!.player
@@ -408,9 +411,9 @@ class _MusicPlayerState extends State<MusicPlayer> {
                                     IconButton(
                                         onPressed: () async {
                                           await widget.spotify!.player.next();
-                                          PlaybackState newState = await widget
-                                              .spotify!.player
-                                              .playbackState();
+                                          Spotify.PlaybackState newState =
+                                              await widget.spotify!.player
+                                                  .playbackState();
                                           setMusicState(newState, state);
                                           _timer?.cancel();
                                           _startTimer(state);
